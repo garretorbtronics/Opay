@@ -121,6 +121,171 @@ Authorization: Bearer YOUR_API_KEY
 
 ---
 
+## Webhooks
+
+Opay can send webhook notifications to your server when payment events occur. This allows you to update your system in real-time when payments succeed or fail.
+
+### Setting Up Webhooks
+
+1. **Configure Webhook URL**: Set your webhook endpoint URL in the Opay dashboard under Settings → Webhooks
+2. **Test Your Endpoint**: Use the "Test Webhook" button to verify your endpoint is working
+3. **Handle Events**: Process incoming webhook events in your application
+
+### Webhook Events
+
+Opay sends the following webhook events:
+
+| Event | Description |
+|-------|-------------|
+| `payment.succeeded` | Payment completed successfully |
+| `payment.failed` | Payment failed or was declined |
+| `webhook.test` | Test event (when using Test button) |
+
+### Webhook Payload Format
+
+All webhook events follow this structure:
+
+```json
+{
+  "event": "payment.succeeded",
+  "data": {
+    "payment_id": "pi_1234567890",
+    "transaction_id": "uuid-transaction-id",
+    "amount": 30000,
+    "currency": "usd",
+    "status": "succeeded"
+  },
+  "timestamp": "2025-12-12T10:30:00Z"
+}
+```
+
+### Event-Specific Data
+
+**payment.succeeded:**
+```json
+{
+  "event": "payment.succeeded",
+  "data": {
+    "payment_id": "pi_1234567890",
+    "transaction_id": "uuid-transaction-id",
+    "amount": 30000,
+    "currency": "usd",
+    "status": "succeeded"
+  },
+  "timestamp": "2025-12-12T10:30:00Z"
+}
+```
+
+**payment.failed:**
+```json
+{
+  "event": "payment.failed",
+  "data": {
+    "payment_id": "pi_1234567890",
+    "transaction_id": "uuid-transaction-id",
+    "amount": 30000,
+    "currency": "usd",
+    "status": "failed",
+    "error": "Your card was declined."
+  },
+  "timestamp": "2025-12-12T10:30:00Z"
+}
+```
+
+### Implementing Webhook Handlers
+
+**Node.js/Express Example:**
+
+```javascript
+app.post('/webhooks/opay', express.raw({type: 'application/json'}), (req, res) => {
+  const event = req.body;
+  
+  switch (event.event) {
+    case 'payment.succeeded':
+      handlePaymentSucceeded(event.data);
+      break;
+    case 'payment.failed':
+      handlePaymentFailed(event.data);
+      break;
+    case 'webhook.test':
+      console.log('Webhook test received');
+      break;
+    default:
+      console.log(`Unhandled event type: ${event.event}`);
+  }
+  
+  res.status(200).send('OK');
+});
+
+function handlePaymentSucceeded(data) {
+  // Update order status in database
+  // Send confirmation email
+  // Fulfill order
+  console.log(`Payment succeeded: ${data.payment_id}`);
+}
+
+function handlePaymentFailed(data) {
+  // Log failed payment
+  // Notify customer
+  // Update order status
+  console.log(`Payment failed: ${data.payment_id} - ${data.error}`);
+}
+```
+
+**Python/Flask Example:**
+
+```python
+from flask import Flask, request, jsonify
+
+@app.route('/webhooks/opay', methods=['POST'])
+def handle_webhook():
+    event = request.get_json()
+    
+    if event['event'] == 'payment.succeeded':
+        handle_payment_succeeded(event['data'])
+    elif event['event'] == 'payment.failed':
+        handle_payment_failed(event['data'])
+    elif event['event'] == 'webhook.test':
+        print('Webhook test received')
+    
+    return jsonify({'status': 'success'}), 200
+
+def handle_payment_succeeded(data):
+    # Update order status
+    # Send confirmation
+    print(f"Payment succeeded: {data['payment_id']}")
+
+def handle_payment_failed(data):
+    # Handle failed payment
+    print(f"Payment failed: {data['payment_id']} - {data.get('error', 'Unknown error')}")
+```
+
+### Webhook Best Practices
+
+1. **Respond Quickly**: Return a 200 status code within 10 seconds
+2. **Handle Duplicates**: Webhook events may be sent multiple times
+3. **Validate Events**: Check the event structure before processing
+4. **Use HTTPS**: Always use HTTPS endpoints for webhook URLs
+5. **Log Events**: Keep logs of all webhook events for debugging
+
+### Testing Webhooks
+
+Use the webhook test feature in your Opay dashboard:
+
+1. Navigate to Settings → Webhooks
+2. Enter your webhook URL
+3. Click "Test Webhook" to send a test event
+4. Verify your endpoint receives and processes the test event
+
+### Webhook Security
+
+- Use HTTPS endpoints only
+- Validate the webhook payload structure
+- Implement idempotency to handle duplicate events
+- Consider implementing webhook signature verification for additional security
+
+---
+
 ## Implementation Guide
 
 ### Step 1: Prepare Payment Data
@@ -383,9 +548,11 @@ Since product items are managed on the client side:
 - [ ] Implement payment session creation
 - [ ] Handle success callback
 - [ ] Handle cancel callback
+- [ ] Set up webhook endpoint (recommended)
+- [ ] Configure webhook URL in Opay dashboard
+- [ ] Test webhook functionality
 - [ ] Test with various amounts and currencies
 - [ ] Implement error handling and logging
-- [ ] Set up payment verification (webhook recommended)
 - [ ] Test in production environment
 
 ---
@@ -398,14 +565,3 @@ For additional support or questions about the Opay integration:
 - **Documentation:** https://docs.opay.orbtronics.co
 - **API Status:** https://status.opay.orbtronics.co
 
----
-
-## Changelog
-
-### Version 1.0
-- Initial documentation
-- Core payment session creation endpoint
-
----
-
-*Last Updated: December 2025*
