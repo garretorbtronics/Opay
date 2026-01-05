@@ -2,7 +2,7 @@
 
 ## Overview
 
-Opay is a payment processing service that allows you to accept payments from customers. This documentation covers the integration process for creating payment sessions using the Opay API.
+Opay is a payment processing service that allows you to accept payments from customers. This documentation covers the integration process for creating payment sessions and managing subscriptions using the Opay API.
 
 ## Base URL
 
@@ -121,6 +121,179 @@ Authorization: Bearer YOUR_API_KEY
 
 ---
 
+## Subscriptions
+
+Opay supports recurring subscription payments, allowing you to create subscription products and manage customer subscriptions.
+
+### List Subscription Products
+
+#### Endpoint
+
+```
+GET /api/v1/subscriptions
+```
+
+#### Description
+
+Retrieves all available subscription products for your account.
+
+#### Request Headers
+
+```
+Authorization: Bearer YOUR_API_KEY
+```
+
+#### Response Format
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "prod_1234567890",
+      "name": "Premium Plan",
+      "description": "Access to premium features",
+      "amount": 2999,
+      "currency": "usd",
+      "interval": "month",
+      "interval_count": 1,
+      "trial_period_days": 7,
+      "active": true,
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+### Get Subscription Product
+
+#### Endpoint
+
+```
+GET /api/v1/subscriptions/{productId}
+```
+
+#### Description
+
+Retrieves details for a specific subscription product.
+
+#### Request Headers
+
+```
+Authorization: Bearer YOUR_API_KEY
+```
+
+#### Response Format
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "prod_1234567890",
+    "name": "Premium Plan",
+    "description": "Access to premium features",
+    "amount": 2999,
+    "currency": "usd",
+    "interval": "month",
+    "interval_count": 1,
+    "trial_period_days": 7,
+    "active": true,
+    "created_at": "2025-01-01T00:00:00Z"
+  }
+}
+```
+
+### Create Subscription Checkout
+
+#### Endpoint
+
+```
+POST /api/v1/subscriptions/{productId}/checkout
+```
+
+#### Description
+
+Creates a checkout session for a subscription product.
+
+#### Request Headers
+
+```
+Content-Type: application/json
+Authorization: Bearer YOUR_API_KEY
+```
+
+#### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `success_url` | string | Yes | URL to redirect customer after successful subscription |
+| `cancel_url` | string | Yes | URL to redirect customer if subscription is cancelled |
+| `customer_email` | string | No | Pre-fill customer email |
+| `metadata` | object | No | Additional metadata to store with the subscription |
+
+#### Request Example
+
+```json
+{
+  "success_url": "https://example.com/subscription/success",
+  "cancel_url": "https://example.com/subscription/cancel",
+  "customer_email": "customer@example.com",
+  "metadata": {
+    "user_id": "12345",
+    "plan_type": "premium"
+  }
+}
+```
+
+#### Response Format
+
+```json
+{
+  "success": true,
+  "checkout_url": "https://checkout.opay.orbtronics.co/subscribe/sess_1234567890abcdef",
+  "session_id": "sess_1234567890abcdef"
+}
+```
+
+### Subscription Webhooks
+
+Opay sends webhook events for subscription-related activities:
+
+#### Subscription Events
+
+| Event | Description |
+|-------|-------------|
+| `customer.subscription.created` | New subscription created |
+| `customer.subscription.updated` | Subscription status changed |
+| `customer.subscription.deleted` | Subscription cancelled |
+
+#### Subscription Webhook Payload
+
+```json
+{
+  "event": "customer.subscription.created",
+  "data": {
+    "subscription_id": "sub_1234567890",
+    "customer_id": "cus_1234567890",
+    "status": "active",
+    "current_period_start": 1704067200,
+    "current_period_end": 1706745600,
+    "items": [
+      {
+        "price": {
+          "id": "price_1234567890",
+          "product": "prod_1234567890"
+        }
+      }
+    ],
+    "environment": "test"
+  },
+  "timestamp": "2025-01-01T00:00:00Z"
+}
+```
+
+---
+
 ## Webhooks
 
 Opay can send webhook notifications to your server when payment events occur. This allows you to update your system in real-time when payments succeed or fail.
@@ -139,6 +312,9 @@ Opay sends the following webhook events:
 |-------|-------------|
 | `payment.succeeded` | Payment completed successfully |
 | `payment.failed` | Payment failed or was declined |
+| `customer.subscription.created` | New subscription created |
+| `customer.subscription.updated` | Subscription status changed |
+| `customer.subscription.deleted` | Subscription cancelled |
 | `webhook.test` | Test event (when using Test button) |
 
 ### Webhook Payload Format
@@ -207,6 +383,12 @@ app.post('/webhooks/opay', express.raw({type: 'application/json'}), (req, res) =
     case 'payment.failed':
       handlePaymentFailed(event.data);
       break;
+    case 'customer.subscription.created':
+      handleSubscriptionCreated(event.data);
+      break;
+    case 'customer.subscription.updated':
+      handleSubscriptionUpdated(event.data);
+      break;
     case 'webhook.test':
       console.log('Webhook test received');
       break;
@@ -230,6 +412,13 @@ function handlePaymentFailed(data) {
   // Update order status
   console.log(`Payment failed: ${data.payment_id} - ${data.error}`);
 }
+
+function handleSubscriptionCreated(data) {
+  // Activate user account
+  // Send welcome email
+  // Update subscription status
+  console.log(`Subscription created: ${data.subscription_id}`);
+}
 ```
 
 **Python/Flask Example:**
@@ -245,6 +434,8 @@ def handle_webhook():
         handle_payment_succeeded(event['data'])
     elif event['event'] == 'payment.failed':
         handle_payment_failed(event['data'])
+    elif event['event'] == 'customer.subscription.created':
+        handle_subscription_created(event['data'])
     elif event['event'] == 'webhook.test':
         print('Webhook test received')
     
@@ -255,9 +446,9 @@ def handle_payment_succeeded(data):
     # Send confirmation
     print(f"Payment succeeded: {data['payment_id']}")
 
-def handle_payment_failed(data):
-    # Handle failed payment
-    print(f"Payment failed: {data['payment_id']} - {data.get('error', 'Unknown error')}")
+def handle_subscription_created(data):
+    # Activate subscription
+    print(f"Subscription created: {data['subscription_id']}")
 ```
 
 ### Webhook Best Practices
@@ -501,10 +692,10 @@ For a complete list of supported currencies, refer to the [Stripe Currency Docum
 Always send amounts in the smallest currency unit to avoid floating-point errors:
 
 ```javascript
-// ✅ Correct
+// Correct
 const amount = 30000; // $300.00
 
-// ❌ Incorrect
+// Incorrect
 const amount = 300.00; // Will be interpreted as $3.00
 ```
 
@@ -553,6 +744,7 @@ Since product items are managed on the client side:
 - [ ] Test webhook functionality
 - [ ] Test with various amounts and currencies
 - [ ] Implement error handling and logging
+- [ ] Test subscription functionality (if using subscriptions)
 - [ ] Test in production environment
 
 ---
@@ -564,4 +756,3 @@ For additional support or questions about the Opay integration:
 - **Email:** support@orbtronics.co
 - **Documentation:** https://docs.opay.orbtronics.co
 - **API Status:** https://status.opay.orbtronics.co
-
