@@ -753,6 +753,5 @@ Since product items are managed on the client side:
 
 For additional support or questions about the Opay integration:
 
-- **Email:** support@orbtronics.co
-- **Documentation:** https://docs.opay.orbtronics.co
+- **Email:** garret@orbtronicsltd.com
 - **API Status:** https://status.opay.orbtronics.co
