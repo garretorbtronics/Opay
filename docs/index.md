@@ -877,6 +877,7 @@ Since product items are managed on the client side:
 - [ ] Test with various amounts and currencies
 - [ ] Implement error handling and logging
 - [ ] Test subscription functionality (if using subscriptions)
+- [ ] Create payment buttons for simple payment links (if applicable)
 - [ ] Test in production environment
 
 ---
