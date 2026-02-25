@@ -300,9 +300,30 @@ Payment Buttons let you create shareable payment links directly from your Opay d
 
 ### How It Works
 
-1. Create a Payment Button in your Opay dashboard (name, amount, optional redirect URLs)
-2. Share the checkout endpoint or embed it on any website
-3. When a customer hits the endpoint, a Stripe checkout session is created and they're redirected to pay
+1. Create a Payment Button in your Opay dashboard (name, amount, currency, optional redirect URLs)
+2. Share the checkout link or embed it on any website
+3. When a customer visits the link, they're redirected to a Stripe checkout page that collects their card details, billing address, and email
+4. After payment, they're redirected to your custom URL or Opay's default success/cancel pages
+
+### Currency Selection
+
+When creating a Payment Button, you can choose between USD or your account's local currency (e.g., JMD, XCD). The available currencies depend on your Stripe connected account's default currency.
+
+### Checkout Experience
+
+The checkout page collects full billing information from the customer:
+- Email address
+- Full name
+- Billing address
+- Card details
+
+### Default Success & Cancel Pages
+
+If you don't provide custom `success_url` or `cancel_url`, Opay provides branded default pages:
+- **Success page:** Shows a confirmation with the payment amount and merchant name
+- **Cancel page:** Shows a cancellation notice with a "Try Again" button
+
+You can override these by providing your own URLs when creating the button or during checkout.
 
 ### Get Payment Button Details
 
@@ -331,23 +352,29 @@ Retrieves public details for a payment button. No authentication required.
 
 ### Create Payment Button Checkout
 
-#### Endpoint
+#### Endpoints
 
 ```
+GET  /api/pay/{buttonId}/checkout
 POST /api/pay/{buttonId}/checkout
 ```
 
 #### Description
 
-Creates a Stripe checkout session for the payment button and returns a checkout URL. No authentication required — this is designed to be called from any website or client.
+Creates a Stripe checkout session for the payment button. Supports both GET (direct link clicks) and POST (form/API calls). No authentication required.
 
-#### Request Headers
+- **GET request:** Redirects the customer directly to Stripe checkout (ideal for shareable links)
+- **POST request:** Returns JSON with the checkout URL (ideal for API integrations)
+
+#### Direct Link (Simplest Integration)
+
+Just share this URL — clicking it takes the customer straight to checkout:
 
 ```
-Content-Type: application/json
+https://opay.orbtronics.co/api/pay/YOUR_BUTTON_ID/checkout
 ```
 
-#### Request Body
+#### POST Request Body
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -356,7 +383,7 @@ Content-Type: application/json
 | `success_url` | string | No | Override the default success redirect URL |
 | `cancel_url` | string | No | Override the default cancel redirect URL |
 
-#### Request Example
+#### POST Request Example
 
 ```json
 {
@@ -367,7 +394,7 @@ Content-Type: application/json
 }
 ```
 
-#### Response Format
+#### POST Response Format
 
 ```json
 {
@@ -376,14 +403,39 @@ Content-Type: application/json
 }
 ```
 
+### Default Pages
+
+#### Success Page
+
+```
+GET /api/pay/{buttonId}/success?session_id={CHECKOUT_SESSION_ID}
+```
+
+Displays a branded confirmation page with the payment amount and merchant name.
+
+#### Cancel Page
+
+```
+GET /api/pay/{buttonId}/cancelled
+```
+
+Displays a cancellation notice with an option to retry the payment.
+
 ### Integration Examples
 
-**HTML Form (no JavaScript needed):**
+**Simple Link (no code needed):**
 
 ```html
-<form method="POST" action="https://opay.orbtronics.co/api/pay/YOUR_BUTTON_ID/checkout">
-  <button type="submit">Pay Now</button>
-</form>
+<a href="https://opay.orbtronics.co/api/pay/YOUR_BUTTON_ID/checkout">Pay Now</a>
+```
+
+**HTML Button:**
+
+```html
+<a href="https://opay.orbtronics.co/api/pay/YOUR_BUTTON_ID/checkout"
+   style="display:inline-block;padding:12px 24px;background:#5bb7e8;color:#fff;border-radius:8px;text-decoration:none;font-family:sans-serif;">
+  Pay Now
+</a>
 ```
 
 **JavaScript:**
@@ -421,6 +473,9 @@ curl -X POST 'https://opay.orbtronics.co/api/pay/YOUR_BUTTON_ID/checkout' \
 |---------|----------------|---------------------|
 | Authentication | None required | API key required |
 | Amount | Fixed (set in dashboard) | Dynamic (set per request) |
+| Currency | USD or account local | Any supported currency |
+| Checkout info | Email, name, billing address, card | Email, name, card |
+| Default pages | Built-in success/cancel pages | Must provide your own URLs |
 | Best for | Simple "Pay Now" links, website embeds | Custom checkout flows, e-commerce |
 | Setup | Dashboard only | Backend integration |
 
