@@ -423,13 +423,26 @@ Displays a cancellation notice with an option to retry the payment.
 
 ### Integration Examples
 
+**Pay with Opay Badge (recommended):**
+
+Use the official Opay payment badge for a professional, branded checkout experience:
+
+```html
+<!-- Pay with Opay Badge -->
+<a href="https://opay.orbtronics.co/api/pay/YOUR_BUTTON_ID/checkout">
+  <img src="https://opay.orbtronics.co/assets/opay_payment_button.svg" alt="Pay with Opay" height="52" />
+</a>
+```
+
+The badge SVG is hosted at `https://opay.orbtronics.co/assets/opay_payment_button.svg` and can be referenced from any website.
+
 **Simple Link (no code needed):**
 
 ```html
 <a href="https://opay.orbtronics.co/api/pay/YOUR_BUTTON_ID/checkout">Pay Now</a>
 ```
 
-**HTML Button:**
+**Custom Styled Button:**
 
 ```html
 <a href="https://opay.orbtronics.co/api/pay/YOUR_BUTTON_ID/checkout"
