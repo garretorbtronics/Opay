@@ -294,6 +294,138 @@ Opay sends webhook events for subscription-related activities:
 
 ---
 
+## Payment Buttons
+
+Payment Buttons let you create shareable payment links directly from your Opay dashboard. Your customers can pay via a simple link — no backend or API key required on their end.
+
+### How It Works
+
+1. Create a Payment Button in your Opay dashboard (name, amount, optional redirect URLs)
+2. Share the checkout endpoint or embed it on any website
+3. When a customer hits the endpoint, a Stripe checkout session is created and they're redirected to pay
+
+### Get Payment Button Details
+
+#### Endpoint
+
+```
+GET /api/pay/{buttonId}
+```
+
+#### Description
+
+Retrieves public details for a payment button. No authentication required.
+
+#### Response Format
+
+```json
+{
+  "id": "uuid-button-id",
+  "name": "Website Design Payment",
+  "description": "Payment for website design services",
+  "amount": 30000,
+  "currency": "usd",
+  "collect_customer_info": true
+}
+```
+
+### Create Payment Button Checkout
+
+#### Endpoint
+
+```
+POST /api/pay/{buttonId}/checkout
+```
+
+#### Description
+
+Creates a Stripe checkout session for the payment button and returns a checkout URL. No authentication required — this is designed to be called from any website or client.
+
+#### Request Headers
+
+```
+Content-Type: application/json
+```
+
+#### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `customer_email` | string | No | Pre-fill customer email on checkout |
+| `customer_name` | string | No | Customer's name |
+| `success_url` | string | No | Override the default success redirect URL |
+| `cancel_url` | string | No | Override the default cancel redirect URL |
+
+#### Request Example
+
+```json
+{
+  "customer_email": "customer@example.com",
+  "customer_name": "John Smith",
+  "success_url": "https://yoursite.com/thank-you",
+  "cancel_url": "https://yoursite.com/cancelled"
+}
+```
+
+#### Response Format
+
+```json
+{
+  "session_id": "cs_test_1234567890",
+  "checkout_url": "https://checkout.stripe.com/c/pay/cs_test_1234567890"
+}
+```
+
+### Integration Examples
+
+**HTML Form (no JavaScript needed):**
+
+```html
+<form method="POST" action="https://opay.orbtronics.co/api/pay/YOUR_BUTTON_ID/checkout">
+  <button type="submit">Pay Now</button>
+</form>
+```
+
+**JavaScript:**
+
+```javascript
+const response = await fetch('https://opay.orbtronics.co/api/pay/YOUR_BUTTON_ID/checkout', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    customer_email: 'customer@example.com',
+    success_url: 'https://yoursite.com/success',
+    cancel_url: 'https://yoursite.com/cancel'
+  })
+});
+
+const data = await response.json();
+if (data.checkout_url) {
+  window.location.href = data.checkout_url;
+}
+```
+
+**cURL:**
+
+```bash
+curl -X POST 'https://opay.orbtronics.co/api/pay/YOUR_BUTTON_ID/checkout' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "customer_email": "customer@example.com"
+  }'
+```
+
+### Payment Button vs Payment Session API
+
+| Feature | Payment Buttons | Payment Session API |
+|---------|----------------|---------------------|
+| Authentication | None required | API key required |
+| Amount | Fixed (set in dashboard) | Dynamic (set per request) |
+| Best for | Simple "Pay Now" links, website embeds | Custom checkout flows, e-commerce |
+| Setup | Dashboard only | Backend integration |
+
+---
+
 ## Webhooks
 
 Opay can send webhook notifications to your server when payment events occur. This allows you to update your system in real-time when payments succeed or fail.
